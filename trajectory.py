@@ -107,7 +107,11 @@ while c.position[1] > 0:
     # Record the positions in order to graph the spiral
     update_position_trace(c, acc_v)
 
-    t = t + dt;
+    t = t + dt
+# if (within the boundary):
+#     update ye
+# else:
+
 
 # fig = pyplot.figure()
 # ax = pyplot.axes(projection='3d')
