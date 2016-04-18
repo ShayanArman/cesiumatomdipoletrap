@@ -7,31 +7,55 @@ import numpy                   # numpy.scipy.org/
 
 
 # Initial values
-light_speed = 2.9979e8 # Speed of light [m/s]
-gravity_acc = 9.805 # Gravitational acceleration at latitude 43.47 degree [m/s^2]
-mass = 2.2069e-25 # Atomic mass of cesium [kg]
+# Speed of light [m/s]
+light_speed = 2.9979e8
+# Gravitational acceleration at latitude 43.47 degree [m/s^2]
+gravity_acc = 9.805
+# Atomic mass of cesium [kg]
+mass = 2.2069e-25
 
-wavelength = 9.356e-7 # Wavelength of dipole trap laser [m]
-omega = 2*numpy.pi*light_speed/wavelength; # Light frequency of dipole trap; 936.5 nm [/s]
-omega_d1 = 2*numpy.pi*light_speed/894.59295986e-9 # Light frequency of D1 [/s]
-omega_d2 = 2*numpy.pi*light_speed/852.34727582e-9 # Light frequency of D2 [/s]
-gamma_d1 = 2*numpy.pi*4.5612e6; # Natural linewidth of D1 [/s]
-gamma_d2 = 2*numpy.pi*5.2227e6; # Natural linewidth of D2 [/s]
+# Wavelength of dipole trap laser [m]
+wavelength = 9.356e-7
+# Light frequency of dipole trap; 936.5 nm [/s]
+omega = 2*numpy.pi*light_speed/wavelength
+# Light frequency of D1 [/s]
+omega_d1 = 2*numpy.pi*light_speed/894.59295986e-9
+# Light frequency of D2 [/s]
+omega_d2 = 2*numpy.pi*light_speed/852.34727582e-9
+# Natural linewidth of D1 [/s]
+gamma_d1 = 2*numpy.pi*4.5612e6
+# Natural linewidth of D2 [/s]
+gamma_d2 = 2*numpy.pi*5.2227e6
 
-Po = 0.1 # Laser power [W]
-waist_size_init = 2.75e-6 # Beam waist at the point of focus = mode field radius [m]
-dt = 0.000001; # time step [s]
+# Laser power [W]
+Po = 0.1
+# Beam waist at the point of focus = mode field radius [m]
+waist_size_init = 2.75e-6
+# time step [s]
+dt = 0.000001
 
-t = 0 # time [s]
-alpha_d1 = (1/(omega_d1**3))*(gamma_d1*((1/(omega_d1 - omega)) + (1/(omega_d1 + omega))))
-alpha_d2 = (1/(omega_d2**3))*(gamma_d2*((1/(omega_d2 - omega)) + (1/(omega_d2 + omega))))
-alpha = ((3/2.0)*math.pi*(light_speed**2.0))*((1/3.0)*alpha_d1 + (2/3.0)*alpha_d2)/mass
-yr = math.pi * (waist_size_init**2)/wavelength
+alpha_d1 = (1/(omega_d1**3))*(
+    gamma_d1*((1/(omega_d1 - omega)) + (1/(omega_d1 + omega))))
+alpha_d2 = (1/(omega_d2**3))*(
+    gamma_d2*((1/(omega_d2 - omega)) + (1/(omega_d2 + omega))))
+alpha = ((3/2.0)*math.pi*(light_speed**2.0))*(
+    ((1/3.0)*alpha_d1 + (2/3.0)*alpha_d2) / mass)
+yr = math.pi * (waist_size_init**2) / wavelength
+
+
+def gen_velocity_vector():
+    return [.0003, 0.00004, 0.00017]
+
 
 class Cesium(object):
     def __init__(self, init_pos_vec, init_vel_vec):
         self.position = init_pos_vec
         self.velocity = init_vel_vec
+        # If result is true, then atom at init pos and init vel will make it
+        # into the fiber.
+        self.result = False
+        self.position_trace = [
+            [self.position[0]], [self.position[1]], [self.position[2]]]
 
     def acc(self):
         """
@@ -58,7 +82,10 @@ class Cesium(object):
         temp = -(4*Po*gaussian_dist) / (math.pi * beam_width)
 
         gradient_x = temp * (self.position[0] / beam_width)
-        gradient_y = temp * (self.position[1] / ((yr**2) * (beam_width_temp))) * (1 + exp_parameter)
+        gradient_y = (
+            temp *
+            (self.position[1] / ((yr**2) * (beam_width_temp))) *
+            (1 + exp_parameter))
         gradient_z = temp * (self.position[2] / beam_width)
         return [gradient_x, gradient_y, gradient_z]
 
@@ -71,7 +98,8 @@ class Cesium(object):
         # position_x = position_x + position_delta[0]
         position_delta = map(lambda v_direction: v_direction*dt, self.velocity)
         self.position = map(
-            lambda pos_init, pos_delta: pos_init + pos_delta, self.position, position_delta)
+            lambda pos_init, pos_delta: pos_init + pos_delta, self.position,
+            position_delta)
 
     def update_velocity(self):
         """
@@ -81,47 +109,78 @@ class Cesium(object):
         # velocity_x = velocity_x + acceleration_x*dt
         # velocity_x = velocity_x + vel_delta[0]
         acceleration_vector = self.acc()
-        vel_delta = map(lambda acc_direction: acc_direction*dt, acceleration_vector)
-        self.velocity = map(lambda v_init, v_delta: v_init + v_delta, self.velocity, vel_delta)
+        vel_delta = map(
+            lambda acc_direction: acc_direction*dt,
+            acceleration_vector)
+        self.velocity = map(
+            lambda v_init, v_delta: v_init + v_delta, self.velocity, vel_delta)
         return acceleration_vector
 
-init_pos_vector = [0.00005, 0.005, 0.0]
+    def update_position_trace(self, time, acceleration):
+        self.position_trace[0].append(self.position[0])
+        self.position_trace[1].append(self.position[1])
+        self.position_trace[2].append(self.position[2])
+
+        print 't={time}\tx={x}\tvx={vx}\tax={ax}\ty={y}\tvy={vy}\tay={ay}'.format(
+            time=time, x=round(self.position[0], 6), y=round(self.position[1], 6),
+            vx=round(self.velocity[0], 4), vy=round(self.velocity[1], 4),
+            ax=round(acceleration[0], 4), ay=round(acceleration[1], 4))
+
+    def run(self, trace_position=False):
+        time = 0
+
+        while self.position[1] > 0:
+            # Update position based on current velocity
+            self.update_position()
+            # Update velocity based on new position in space
+            acc_v = self.update_velocity()
+
+            if trace_position:
+                # Record the positions in order to graph the spiral
+                self.update_position_trace(time, acc_v)
+
+            time += dt
+        distance_from_zero = math.sqrt(
+            self.position[0]**2 + self.position[2]**2)
+        if distance_from_zero < .00014:
+            self.result = True
+        return time
+
+
+class Tests:
+    def maxwell_boltzmann_test(self):
+        """
+        Given a single position, it goes through a number of random velocity
+        vectors, and returns the percentage of atoms that reaches the fiber.
+
+        """
+        init_position_vector = [0.00005, 0.05, 0.00034]
+        init_velocity_vector = gen_velocity_vector()
+        num_successes = 0
+        num_trials = 150
+        for x in range(num_trials):
+            c = Cesium(init_pos_vector, init_velocity_vector)
+            c.run()
+
+            if c.result is True:
+                num_successes += 1
+
+        # Return percentage of atoms that made it into the fiber at this position.
+        return (num_successes / num_trials) * 100
+
+init_pos_vector = [0.00005, 0.05, 0.00034]
 init_vel_vector = [0.0, 0.0, 0.0]
 c = Cesium(init_pos_vector, init_vel_vector)
-
-position_trace = [[init_pos_vector[0]], [init_pos_vector[1]], [init_pos_vector[2]]]
-def update_position_trace(c, acceleration):
-    position_trace[0].append(c.position[0])
-    position_trace[1].append(c.position[1])
-    position_trace[2].append(c.position[2])
-    
-    print 't={time}\tx={x}\tvx={vx}\tax={ax}\ty={y}\tvy={vy}\tay={ay}'.format(
-        time=t, x=round(c.position[0], 6), y=round(c.position[1], 6), vx=round(c.velocity[0], 4),
-        vy=round(c.velocity[1], 4), ax=round(acceleration[0], 4), ay=round(acceleration[1], 4))
-
-while c.position[1] > 0:
-    # Update position based on current velocity
-    c.update_position()
-    # Update velocity based on new position in space
-    acc_v = c.update_velocity()
-    # Record the positions in order to graph the spiral
-    update_position_trace(c, acc_v)
-
-    t = t + dt
-# if (within the boundary):
-#     update ye
-# else:
-
+time = c.run(trace_position=True)
 
 # fig = pyplot.figure()
 # ax = pyplot.axes(projection='3d')
 # ax.plot3D(position_trace[0], position_trace[2], position_trace[1], 'red')
 # pyplot.show()
-print('t = {0:.5f} s'.format(t))
+print('t = {0:.5f} s'.format(time))
 print('x = {0:.5f} m'.format(c.position[0]))
 print('y = {0:.5f} m'.format(c.position[1]))
 print('z = {0:.5f} m'.format(c.position[2]))
 print('vx = {0:.5f} m/s'.format(c.velocity[0]))
 print('vy = {0:.5f} m/s'.format(c.velocity[1]))
 print('vz = {0:.5f} m/s'.format(c.velocity[2]))
-
