@@ -37,6 +37,8 @@ gamma_d1 = 2*np.pi*4.5612e6
 # Natural linewidth of D2 [/s]
 gamma_d2 = 2*np.pi*5.2227e6
 
+FIBER_RADIUS_SQUARED = (7.5e-6)**2
+
 # Laser power [W]
 Po = 0.1
 # Beam waist at the point of focus = mode field radius [m]
@@ -59,7 +61,7 @@ class Cesium(object):
         self.velocity = init_vel_vec
         # If result is true, then atom at init pos and init vel will make it
         # into the fiber.
-        self.result = False
+        self.result = True
         self.position_trace = [
             [self.position[0]], [self.position[1]], [self.position[2]]]
 
@@ -133,9 +135,14 @@ class Cesium(object):
             ax=round(acceleration[0], 4), ay=round(acceleration[1], 4))
 
     def run(self, trace_position=False):
+        """
+        Given the initial position of the atom. Iterate over delta time,
+        updating its position, and decide if the atom ends up inside the fiber.
+
+        """
         time = 0
 
-        while self.position[1] > 0:
+        while self.position[1] > -0.0001:
             # Update position based on current velocity
             self.update_position()
             # Update velocity based on new position in space
@@ -145,15 +152,47 @@ class Cesium(object):
                 # Record the positions in order to graph the spiral
                 self.update_position_trace(time, acc_v)
 
+            if self.position[1] < 0 and (
+                    self.position[0]**2 + self.position[2]**2 > FIBER_RADIUS_SQUARED):
+                self.result = False
+                break
+
             time += dt
-        distance_from_zero = math.sqrt(
-            self.position[0]**2 + self.position[2]**2)
-        if distance_from_zero < .00014:
-            self.result = True
+
         return time
 
 
 class Tests:
+    def single_atom_test(self, init_pos, init_vel, trace_position=True):
+        """
+        Test whether a Cesium atom with the init position and init velocity
+        will make it into the fiber.
+
+        """
+        c = Cesium(init_pos, init_vel)
+        c.run(trace_position)
+        print c.result
+
+    def y_range_test(self):
+        """
+        Test to see if atoms loaded in the MOT with y ranges 6.5 mm to 7.5 mm
+        enters the fiber.
+        x and z are constant at 0.
+
+        """
+        delta_time = 0.0001
+        y_posit = .0065
+        results = {}
+        while y_posit < .0076:
+            init_pos_vector = [0.00, y_posit, 0.0]
+            init_vel_vector = [0.0, 0.0, 0.0]
+            c = Cesium(init_pos_vector, init_vel_vector)
+            c.run(trace_position=True)
+            results[y_posit] = c.result
+            y_posit += delta_time
+        for k, v in results.iteritems():
+            print k, v
+
     def maxwell_boltzmann_test(self):
         """
         Given a single position, it goes through a number of random velocity
@@ -175,23 +214,11 @@ class Tests:
         return (num_successes / num_trials) * 100
 
 
-Tests().maxwell_boltzmann_test()
-# init_pos_vector = [0.00005, 0.05, 0.00034]
-# init_vel_vector = [0.0, 0.0, 0.0]
-# c = Cesium(init_pos_vector, init_vel_vector)
-# time = c.run(trace_position=True)
+# Tests().maxwell_boltzmann_test()
+Tests().single_atom_test([0, 0.007, 0], [0, 0, 0])
 
 # PLOTTING
 # fig = pyplot.figure()
 # ax = pyplot.axes(projection='3d')
 # ax.plot3D(position_trace[0], position_trace[2], position_trace[1], 'red')
 # pyplot.show()
-
-# INITIAL CESIUM
-# print('t = {0:.5f} s'.format(time))
-# print('x = {0:.5f} m'.format(c.position[0]))
-# print('y = {0:.5f} m'.format(c.position[1]))
-# print('z = {0:.5f} m'.format(c.position[2]))
-# print('vx = {0:.5f} m/s'.format(c.velocity[0]))
-# print('vy = {0:.5f} m/s'.format(c.velocity[1]))
-# print('vz = {0:.5f} m/s'.format(c.velocity[2]))
