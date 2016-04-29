@@ -1,9 +1,8 @@
-# Shayan Arman.
 # %matplotlib inline
-import math                    # http://docs.python.org/library/math.html
-import numpy                   # numpy.scipy.org/
-# import matplotlib.pyplot as pyplot # matplotlib.sourceforge.net
-# from mpl_toolkits import mplot3d
+# import matplotlib.pyplot as pyplot
+import numpy as np
+import math
+import random
 
 
 # Initial values
@@ -13,19 +12,30 @@ light_speed = 2.9979e8
 gravity_acc = 9.805
 # Atomic mass of cesium [kg]
 mass = 2.2069e-25
+# Boltzmann Constant KB
+KB = 1.38065e-23
+# Temperature
+T = 2e-5
+
+MAX_BOLT_MU = 0
+MAX_BOLT_SIGMA = math.sqrt(KB * T / mass)
+
+# Minimum and maximum velocity of Cesium atoms
+v_min = 0
+v_max = 0.25
 
 # Wavelength of dipole trap laser [m]
 wavelength = 9.356e-7
 # Light frequency of dipole trap; 936.5 nm [/s]
-omega = 2*numpy.pi*light_speed/wavelength
+omega = 2*np.pi*light_speed/wavelength
 # Light frequency of D1 [/s]
-omega_d1 = 2*numpy.pi*light_speed/894.59295986e-9
+omega_d1 = 2*np.pi*light_speed/894.59295986e-9
 # Light frequency of D2 [/s]
-omega_d2 = 2*numpy.pi*light_speed/852.34727582e-9
+omega_d2 = 2*np.pi*light_speed/852.34727582e-9
 # Natural linewidth of D1 [/s]
-gamma_d1 = 2*numpy.pi*4.5612e6
+gamma_d1 = 2*np.pi*4.5612e6
 # Natural linewidth of D2 [/s]
-gamma_d2 = 2*numpy.pi*5.2227e6
+gamma_d2 = 2*np.pi*5.2227e6
 
 # Laser power [W]
 Po = 0.1
@@ -41,10 +51,6 @@ alpha_d2 = (1/(omega_d2**3))*(
 alpha = ((3/2.0)*math.pi*(light_speed**2.0))*(
     ((1/3.0)*alpha_d1 + (2/3.0)*alpha_d2) / mass)
 yr = math.pi * (waist_size_init**2) / wavelength
-
-
-def gen_velocity_vector():
-    return [.0003, 0.00004, 0.00017]
 
 
 class Cesium(object):
@@ -154,12 +160,12 @@ class Tests:
         vectors, and returns the percentage of atoms that reaches the fiber.
 
         """
-        init_position_vector = [0.00005, 0.05, 0.00034]
-        init_velocity_vector = gen_velocity_vector()
+        init_pos_vector = [0.00005, 0.05, 0.00034]
         num_successes = 0
         num_trials = 150
         for x in range(num_trials):
-            c = Cesium(init_pos_vector, init_velocity_vector)
+            velocity = np.random.normal(MAX_BOLT_MU, MAX_BOLT_SIGMA, 3).tolist()
+            c = Cesium(init_pos_vector, velocity)
             c.run()
 
             if c.result is True:
@@ -168,19 +174,24 @@ class Tests:
         # Return percentage of atoms that made it into the fiber at this position.
         return (num_successes / num_trials) * 100
 
-init_pos_vector = [0.00005, 0.05, 0.00034]
-init_vel_vector = [0.0, 0.0, 0.0]
-c = Cesium(init_pos_vector, init_vel_vector)
-time = c.run(trace_position=True)
 
+Tests().maxwell_boltzmann_test()
+# init_pos_vector = [0.00005, 0.05, 0.00034]
+# init_vel_vector = [0.0, 0.0, 0.0]
+# c = Cesium(init_pos_vector, init_vel_vector)
+# time = c.run(trace_position=True)
+
+# PLOTTING
 # fig = pyplot.figure()
 # ax = pyplot.axes(projection='3d')
 # ax.plot3D(position_trace[0], position_trace[2], position_trace[1], 'red')
 # pyplot.show()
-print('t = {0:.5f} s'.format(time))
-print('x = {0:.5f} m'.format(c.position[0]))
-print('y = {0:.5f} m'.format(c.position[1]))
-print('z = {0:.5f} m'.format(c.position[2]))
-print('vx = {0:.5f} m/s'.format(c.velocity[0]))
-print('vy = {0:.5f} m/s'.format(c.velocity[1]))
-print('vz = {0:.5f} m/s'.format(c.velocity[2]))
+
+# INITIAL CESIUM
+# print('t = {0:.5f} s'.format(time))
+# print('x = {0:.5f} m'.format(c.position[0]))
+# print('y = {0:.5f} m'.format(c.position[1]))
+# print('z = {0:.5f} m'.format(c.position[2]))
+# print('vx = {0:.5f} m/s'.format(c.velocity[0]))
+# print('vy = {0:.5f} m/s'.format(c.velocity[1]))
+# print('vz = {0:.5f} m/s'.format(c.velocity[2]))
