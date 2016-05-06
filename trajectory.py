@@ -2,8 +2,7 @@
 # import matplotlib.pyplot as pyplot
 import numpy as np
 import math
-import random
-
+import pdb
 
 # Initial values
 # Speed of light [m/s]
@@ -36,7 +35,6 @@ omega_d2 = 2*np.pi*light_speed/852.34727582e-9
 gamma_d1 = 2*np.pi*4.5612e6
 # Natural linewidth of D2 [/s]
 gamma_d2 = 2*np.pi*5.2227e6
-
 FIBER_RADIUS_SQUARED = (7.5e-6)**2
 
 # Laser power [W]
@@ -141,8 +139,7 @@ class Cesium(object):
 
         """
         time = 0
-
-        while self.position[1] > -0.0001:
+        while self.position[1] > -0.00001:
             # Update position based on current velocity
             self.update_position()
             # Update velocity based on new position in space
@@ -158,7 +155,6 @@ class Cesium(object):
                 break
 
             time += dt
-
         return time
 
 
@@ -170,55 +166,59 @@ class Tests:
 
         """
         c = Cesium(init_pos, init_vel)
-        c.run(trace_position)
         print c.result
 
-    def y_range_test(self):
-        """
-        Test to see if atoms loaded in the MOT with y ranges 6.5 mm to 7.5 mm
-        enters the fiber.
-        x and z are constant at 0.
-
-        """
-        delta_time = 0.0001
-        y_posit = .0065
-        results = {}
-        while y_posit < .0076:
-            init_pos_vector = [0.00, y_posit, 0.0]
-            init_vel_vector = [0.0, 0.0, 0.0]
-            c = Cesium(init_pos_vector, init_vel_vector)
-            c.run(trace_position=True)
-            results[y_posit] = c.result
-            y_posit += delta_time
-        for k, v in results.iteritems():
-            print k, v
-
-    def maxwell_boltzmann_test(self):
+    def maxwell_boltzmann_test(self, init_position, num_trials=10):
         """
         Given a single position, it goes through a number of random velocity
-        vectors, and returns the percentage of atoms that reaches the fiber.
+        vectors, and returns the percentage of atoms that reach the fiber.
 
         """
-        init_pos_vector = [0.00005, 0.05, 0.00034]
-        num_successes = 0
-        num_trials = 150
-        for x in range(num_trials):
+        num_successes = 0.0
+        for x in range(int(num_trials)):
             velocity = np.random.normal(MAX_BOLT_MU, MAX_BOLT_SIGMA, 3).tolist()
-            c = Cesium(init_pos_vector, velocity)
-            c.run()
+            cesium = Cesium(init_position, velocity)
+            cesium.run()
 
-            if c.result is True:
+            if cesium.result is True:
                 num_successes += 1
 
         # Return percentage of atoms that made it into the fiber at this position.
         return (num_successes / num_trials) * 100
 
+    def y_range_test(self):
+        """
+        Test to see if atoms loaded in the MOT with y ranges 6.5 mm to 7.5 mm
+        enters the fiber.
+        z is constant at 0.
 
-# Tests().maxwell_boltzmann_test()
-Tests().single_atom_test([0, 0.007, 0], [0, 0, 0])
+        """
+        delta_y = 0.0001
+        delta_x = 0.00003
+        y_posit = .0065
+        x_posit = 0.0
+        results = {}
+        while y_posit < .0076:
+            x_posit = 0.0
+            while x_posit < .0006:
+                init_pos = [x_posit, y_posit, 0.0]
+                print x_posit, y_posit, self.maxwell_boltzmann_test(init_pos, 50)
+                x_posit += delta_x
+            y_posit += delta_y
+
+# Tests().y_range_test()
+Tests().single_atom_test([0, 0.007, 0], [-0.06786763250028102, 0.04507199789615998, 0.0013829422806097343])
 
 # PLOTTING
 # fig = pyplot.figure()
 # ax = pyplot.axes(projection='3d')
 # ax.plot3D(position_trace[0], position_trace[2], position_trace[1], 'red')
 # pyplot.show()
+
+# print('t = {0:.5f} s'.format(time))
+# print('x = {0:.5f} m'.format(c.position[0]))
+# print('y = {0:.5f} m'.format(c.position[1]))
+# print('z = {0:.5f} m'.format(c.position[2]))
+# print('vx = {0:.5f} m/s'.format(c.velocity[0]))
+# print('vy = {0:.5f} m/s'.format(c.velocity[1]))
+# print('vz = {0:.5f} m/s'.format(c.velocity[2]))
