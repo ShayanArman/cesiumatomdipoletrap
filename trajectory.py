@@ -3,6 +3,7 @@
 import numpy as np
 import math
 import pdb
+import volume_single
 
 # Initial values
 # Speed of light [m/s]
@@ -36,13 +37,16 @@ gamma_d1 = 2*np.pi*4.5612e6
 # Natural linewidth of D2 [/s]
 gamma_d2 = 2*np.pi*5.2227e6
 FIBER_RADIUS_SQUARED = (7.5e-6)**2
+# FIBER_BUFFER_DISTANCE = 0.00001
+FIBER_BUFFER_DISTANCE = 0.00003
 
 # Laser power [W]
 Po = 0.1
 # Beam waist at the point of focus = mode field radius [m]
 waist_size_init = 2.75e-6
 # time step [s]
-dt = 0.000001
+DELTA_TIME = 0.000001
+# DELTA_TIME = 0.00001
 
 alpha_d1 = (1/(omega_d1**3))*(
     gamma_d1*((1/(omega_d1 - omega)) + (1/(omega_d1 + omega))))
@@ -102,7 +106,7 @@ class Cesium(object):
         """
         # position_x = position_x + velocity_x*dt
         # position_x = position_x + position_delta[0]
-        position_delta = map(lambda v_direction: v_direction*dt, self.velocity)
+        position_delta = map(lambda v_direction: v_direction*DELTA_TIME, self.velocity)
         self.position = map(
             lambda pos_init, pos_delta: pos_init + pos_delta, self.position,
             position_delta)
@@ -116,7 +120,7 @@ class Cesium(object):
         # velocity_x = velocity_x + vel_delta[0]
         acceleration_vector = self.acc()
         vel_delta = map(
-            lambda acc_direction: acc_direction*dt,
+            lambda acc_direction: acc_direction*DELTA_TIME,
             acceleration_vector)
         self.velocity = map(
             lambda v_init, v_delta: v_init + v_delta, self.velocity, vel_delta)
@@ -139,7 +143,8 @@ class Cesium(object):
 
         """
         time = 0
-        while self.position[1] > -0.00001:
+        dt = DELTA_TIME
+        while self.position[1] > -FIBER_BUFFER_DISTANCE:
             # Update position based on current velocity
             self.update_position()
             # Update velocity based on new position in space
@@ -148,11 +153,13 @@ class Cesium(object):
             if trace_position:
                 # Record the positions in order to graph the spiral
                 self.update_position_trace(time, acc_v)
-
             if self.position[1] < 0 and (
                     self.position[0]**2 + self.position[2]**2 > FIBER_RADIUS_SQUARED):
                 self.result = False
                 break
+
+            if (self.position[1] < 0.0035):
+                dt = 0.000001
 
             time += dt
         return time
@@ -166,7 +173,8 @@ class Tests:
 
         """
         c = Cesium(init_pos, init_vel)
-        print c.result
+        c.run(trace_position)
+        return c.result
 
     def maxwell_boltzmann_test(self, init_position, num_trials=10):
         """
@@ -179,6 +187,7 @@ class Tests:
             velocity = np.random.normal(MAX_BOLT_MU, MAX_BOLT_SIGMA, 3).tolist()
             cesium = Cesium(init_position, velocity)
             cesium.run()
+            # result = volume_single.CesiumAtom().enters_fiber(init_position, velocity)
 
             if cesium.result is True:
                 num_successes += 1
@@ -195,19 +204,55 @@ class Tests:
         """
         delta_y = 0.0001
         delta_x = 0.00003
-        y_posit = .0065
-        x_posit = 0.0
+        y_posit = .0068
+        x_posit = 0.00033
         results = {}
-        while y_posit < .0076:
-            x_posit = 0.0
-            while x_posit < .0006:
-                init_pos = [x_posit, y_posit, 0.0]
-                print x_posit, y_posit, self.maxwell_boltzmann_test(init_pos, 50)
-                x_posit += delta_x
-            y_posit += delta_y
+        # while y_posit < .0076:
+        #     x_posit = 0.0
+        while x_posit < .0006:
+            init_pos = [x_posit, y_posit, 0.0]
+            print x_posit, y_posit, self.maxwell_boltzmann_test(init_pos, 2000)
+            x_posit += delta_x
+        # y_posit += delta_y
+
+    def test_mine_taehyun(self, p_vector, v_vector):
+        this = self.single_atom_test(p_vector, v_vector)
+        taehyun = volume_single.CesiumAtom().enters_fiber(p_vector, v_vector)
+        return this, taehyun
+
+
+class Colormap:
+    def create_percentage_matrix(self, filename='maxwell_boltzmann_test'):
+        """
+        Read the csv of the position, velocity, percentage
+        lines and create a matrix of only the percentages or values.
+        The rows are the y values, and the columns are the x values.
+        A row by column matrix is returned.
+
+        """
+        color_map_matrix = []
+        with open(filename, 'r') as file:
+            nums = file.readline().strip().split(', ')
+            current_y = float(nums[1])
+            index = 0
+            color_map_matrix.append([float(nums[-1])])
+            for line in file:
+                nums = line.strip().split(', ')
+                percent = float(nums[-1])
+                y = float(nums[1])
+                if current_y != float(nums[1]):
+                    index += 1
+                    current_y = y
+                    color_map_matrix.append([percent])
+                else:
+                    color_map_matrix[index].append(percent)
+        return color_map_matrix
 
 # Tests().y_range_test()
-Tests().single_atom_test([0, 0.007, 0], [-0.06786763250028102, 0.04507199789615998, 0.0013829422806097343])
+print Tests().test_mine_taehyun([0.00057, 0.0074, 0.0], [-0.015747562062037146, -0.022824595387545336, -0.00018671093214203338])
+# print Tests().test_mine_taehyun([0.0005700000000000001, 0.007400000000000001, 0.0], [-0.015747562062037146, -0.022824595387545336, -0.00018671093214203338])
+# print Tests().test_mine_taehyun([0.00048, 0.0072, 0], [-0.012938235379657806, -0.003702158386303568, 0.0003317082568845725])
+
 
 # PLOTTING
 # fig = pyplot.figure()

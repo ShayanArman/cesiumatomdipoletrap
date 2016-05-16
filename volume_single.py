@@ -72,23 +72,21 @@ yR = numpy.pi*w0pow2/wavelength
 # Initial values
 # x0 = 0.0 # initial position in x [m]
 # initial position in x [m]
-pos_vec = [0, 0.007, 0]
-x0 = pos_vec[0]
+p_vector = [0, 0.007, 0]
+x0 = p_vector[0]
 # initial position in y [m]
-y0 = pos_vec[1]
+y0 = p_vector[1]
 # initial position in z [m]
-z0 = pos_vec[2]
-v_vec = [-0.06786763250028102, 0.04507199789615998, 0.0013829422806097343]
-# initial velocity in x [m]
-vx0 = v_vec[0]
-# initial velocity in y [m]
-vy0 = v_vec[1]
-# initial velocity in z [m]
-vz0 = v_vec[2]
-# time [s]
+z0 = p_vector[2]
+v_vector = [-0.06786763250028102, 0.04507199789615998, 0.0013829422806097343]
 t = 0
-# time step [s]
-dt = 0.00001
+DELTA_TIME = 0.000001
+# initial velocity in x [m]
+vx0 = v_vector[0]
+# initial velocity in y [m]
+vy0 = v_vector[1]
+# initial velocity in z [m]
+vz0 = v_vector[2]
 # dt = 0.000001 # time step [s]
 # vstep = [0.001, 0.0001] # velocity step [m]
 # Square of beam radius at position y
@@ -105,65 +103,72 @@ vxflag = 1
 vzflag = 1
 
 t1 = datetime.datetime.now()
-t = 0
-dt = 0.00001
-x = x0
-y = y0
-z = z0
-vx = vx0
-vy = vy0
-vz = vz0
-result = "TRUE"
-while (y > -0.0003):
-    x = x + vx*dt
-    y = y + vy*dt
-    z = z + vz*dt
 
-    # Square of atom's distance from axis
-    rpow2 = x**2 + z**2
-    yratio = 1+(y/yR)**2
-    # Square of beam radius at position y
-    wypow2 = w0pow2 * yratio
-    # Peak intensity at position y
-    I0y = I0/yratio
-    if (y > 0):
-        beta = -alpha*(2*I0y/wypow2)*numpy.exp(-rpow2/wypow2)
-    else:
-        # 5.625e-11 = (7.5um)^2
-        if (rpow2 > 5.625e-11):
-            result = "FALSE"
-            # Break the while loop
-            y = -0.002
-            vxlist1.append(vx0)
-            vylist1.append(vy0)
-            vzlist1.append(vz0)
-            vxflag = 0
-        else:
-            beta = -alpha*(2*I0/w0pow2)*numpy.exp(-rpow2/w0pow2)
 
-    ax_val = ax(x, beta)
-    vx = vx + dt*ax_val
-    # vx = vx + dt*ax(x,beta)
+class CesiumAtom(object):
+    def __init__(self):
+        pass
 
-    ay_val = ay(y, beta, rpow2, yratio)
-    vy = vy + dt*ay_val
-    # vy = vy + dt*ay(y,beta,rpow2,yR)
+    def enters_fiber(self, pos_vector, vel_vector):
+        x = pos_vector[0]
+        y = pos_vector[1]
+        z = pos_vector[2]
+        vx = vel_vector[0]
+        vy = vel_vector[1]
+        vz = vel_vector[2]
 
-    az_val = az(z, beta)
-    vz = vz + dt*az_val
-    # vz = vz + dt*az(z,beta)
+        result = True
+        t = 0
+        while (y > -0.00003):
+            x = x + vx*DELTA_TIME
+            y = y + vy*DELTA_TIME
+            z = z + vz*DELTA_TIME
 
-    if (y < 0.0035):
-        dt = 0.000001
+            # Square of atom's distance from axis
+            rpow2 = x**2 + z**2
+            yratio = 1+(y/yR)**2
+            # Square of beam radius at position y
+            wypow2 = w0pow2 * yratio
+            # Peak intensity at position y
+            I0y = I0/yratio
+            if (y > 0):
+                beta = -alpha*(2*I0y/wypow2)*numpy.exp(-rpow2/wypow2)
+            else:
+                # 5.625e-11 = (7.5um)^2
+                if (rpow2 > 5.625e-11):
+                    result = False
+                    # Break the while loop
+                    y = -0.002
+                    vxlist1.append(vx0)
+                    vylist1.append(vy0)
+                    vzlist1.append(vz0)
+                    vxflag = 0
+                else:
+                    beta = -alpha*(2*I0/w0pow2)*numpy.exp(-rpow2/w0pow2)
 
-    t = t + dt
+            ax_val = ax(x, beta)
+            vx = vx + DELTA_TIME*ax_val
+            # vx = vx + dt*ax(x,beta)
+
+            ay_val = ay(y, beta, rpow2, yratio)
+            vy = vy + DELTA_TIME*ay_val
+            # vy = vy + dt*ay(y,beta,rpow2,yR)
+
+            az_val = az(z, beta)
+            vz = vz + DELTA_TIME*az_val
+            # vz = vz + dt*az(z,beta)
+            if (y < 0.0035):
+                dt = 0.000001
+
+            t = t + DELTA_TIME
+        return result
 
 t2 = datetime.datetime.now()
-print result
-print(t2 - t1)
+# print CesiumAtom().enters_fiber(p_vector, v_vector)
+# print(t2 - t1)
 
-for k in range(0, len(vzlist1)):
-    print('vx={0:.6f}\tvz={1:.6f}\tvy={2:.6f}'.format(vxlist1[k], vzlist1[k], vylist1[k]))
+# for k in range(0, len(vzlist1)):
+#     print('vx={0:.6f}\tvz={1:.6f}\tvy={2:.6f}'.format(vxlist1[k], vzlist1[k], vylist1[k]))
 
 # fig = pyplot.figure()
 # ax = fig.gca(projection='3d')
